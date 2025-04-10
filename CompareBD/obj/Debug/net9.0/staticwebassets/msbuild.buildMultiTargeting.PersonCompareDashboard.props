@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\PersonCompareDashboard.props" />
+</Project>

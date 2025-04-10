@@ -1,0 +1,191 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    /* Contenedor principal */
+    .comparison-container {
+        text-align: center;
+        padding: 20px;
+    }
+
+    /* Botón de comparación */
+    .btn-compare {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 18px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: 0.3s;
+        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+        .btn-compare:hover {
+            background-color: #0056b3;
+        }
+
+    /* Estilos para las tablas de comparación */
+    .comparison-table {
+        width: 80%;
+        margin: 20px auto;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        .comparison-table th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+    /* Mensaje de éxito */
+    .success-message {
+        color: green;
+        font-weight: bold;
+        font-size: 18px;
+        margin-top: 15px;
+    }
+
+    /* Contenedor del gráfico */
+    .chart-container {
+        width: 200px;
+        margin: 20px auto;
+        position: relative;
+    }
+
+    /* Estilos del porcentaje en el gráfico */
+    #matchPercent {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 22px;
+        font-weight: bold;
+    }
+</style>
+
+<div class="comparison-container">
+    <h2>Comparar Personas</h2>
+
+    <!-- Gráfico -->
+    <div class="chart-container">
+        <canvas id="matchChart" width="200" height="200"></canvas>
+        <div id="matchPercent">0%</div>
+    </div>
+
+    <!-- Botón de comparar -->
+    <form method="post">
+        <button type="submit" class="btn-compare">Comparar</button>
+    </form>
+
+    @if (Model.Resultado != null)
+    {
+        <p>SQL Server: <strong>@Model.Resultado.Value.CountSql</strong> registros</p>
+        <p>PostgreSQL: <strong>@Model.Resultado.Value.CountPostgre</strong> registros</p>
+
+        @if (Model.Resultado.Value.MissingInSql.Any() || Model.Resultado.Value.MissingInPostgre.Any())
+        {
+            <h4>Faltantes en SQL Server:</h4>
+            <table class="comparison-table">
+                <tr><th>Cédula</th><th>Nombre</th><th>Apellido</th><th>Edad</th></tr>
+                @foreach (var p in Model.Resultado.Value.MissingInSql)
+                {
+                    <tr>
+                        <td>@p.Cedula</td>
+                        <td>@p.Nombre</td>
+                        <td>@p.Apellido</td>
+                        <td>@p.Edad</td>
+                    </tr>
+                }
+            </table>
+
+            <h4>Faltantes en PostgreSQL:</h4>
+            <table class="comparison-table">
+                <tr><th>Cédula</th><th>Nombre</th><th>Apellido</th><th>Edad</th></tr>
+                @foreach (var p in Model.Resultado.Value.MissingInPostgre)
+                {
+                    <tr>
+                        <td>@p.Cedula</td>
+                        <td>@p.Nombre</td>
+                        <td>@p.Apellido</td>
+                        <td>@p.Edad</td>
+                    </tr>
+                }
+            </table>
+
+            <form method="post" asp-page-handler="Sync">
+                <button type="submit" class="btn btn-success">Sincronizar Faltantes</button>
+            </form>
+        }
+        else
+        {
+            <p class="success-message">No hay diferencias 🎉</p>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        let chart;
+
+        function initChart() {
+            const ctx = document.getElementById('matchChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: ['#4CAF50', '#E0E0E0'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: { enabled: false },
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function updateChart(percent) {
+            chart.data.datasets[0].data = [percent, 100 - percent];
+            chart.update();
+            document.getElementById("matchPercent").innerText = percent + "%";
+        }
+
+        window.onload = function () {
+            initChart();
+
+        @if (Model.Resultado != null)
+        {
+            var totalRegistros = @Model.Resultado.Value.CountSql + @Model.Resultado.Value.CountPostgre;
+            var sincronizados = totalRegistros - (@Model.Resultado.Value.MissingInSql.Count + @Model.Resultado.Value.MissingInPostgre.Count);
+            var porcentaje = totalRegistros > 0 ? (int)Math.Floor((double)sincronizados / totalRegistros * 100) : 0;
+
+            <text>
+                updateChart(@porcentaje);
+            </text>
+        }
+        };
+    </script>
+}
+
