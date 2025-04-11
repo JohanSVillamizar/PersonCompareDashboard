@@ -1,10 +1,12 @@
 ﻿using PersonCompareDashboard.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace PersonCompareDashboard.Services
 {
     public interface IPersonaCompareStrategy
     {
-        Task<(int countSql, int countPostgre, List<Persona> missingInPostgre, List<Persona> missingInSql)> CompareAsync();
+        Task<CompareResult> CompareAsync();
         Task SyncMissingAsync(List<Persona> missingInSql, List<Persona> missingInPostgre);
     }
 }

@@ -2,38 +2,39 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PersonCompareDashboard.Models;
 using PersonCompareDashboard.Services;
-using System.Diagnostics.Metrics;
 
-namespace PersonCompareDashboard.Pages;
-
-public class IndexModel : PageModel
+namespace PersonCompareDashboard.Pages
 {
-    private readonly IPersonaCompareStrategy _comparer;
-
-    public IndexModel(IPersonaCompareStrategy comparer)
+    public class IndexModel : PageModel
     {
-        _comparer = comparer;
-    }
+        private readonly IPersonaCompareStrategy _comparer;
 
-    public (int CountSql, int CountPostgre, List<Persona> MissingInPostgre, List<Persona> MissingInSql)? Resultado { get; set; }
+        public IndexModel(IPersonaCompareStrategy comparer)
+        {
+            _comparer = comparer;
+        }
 
+        [BindProperty]
+        public CompareResult Resultado { get; set; }
 
-    public async Task<IActionResult> OnPostAsync()
-    {
-        Resultado = await _comparer.CompareAsync();
-        return Page();
-    }
+        public async Task<IActionResult> OnPostAsync()
+        {
+            Resultado = await _comparer.CompareAsync();
+            return Page();
+        }
 
-    public async Task<IActionResult> OnPostSyncAsync()
-    {
-        var(countSql, countPg, missingInPostgre, missingInSql) = await _comparer.CompareAsync();
+        public async Task<IActionResult> OnPostSyncAsync()
+        {
+            // Vuelve a comparar para obtener los registros actuales a sincronizar
+            var resultadoActual = await _comparer.CompareAsync();
 
+            // Sincroniza los registros que hacen falta
+            await _comparer.SyncMissingAsync(resultadoActual.MissingInSql, resultadoActual.MissingInPostgre);
 
-        await _comparer.SyncMissingAsync(missingInSql, missingInPostgre);
+            // Vuelve a obtener el resultado para mostrar la vista actualizada
+            Resultado = await _comparer.CompareAsync();
 
-        Resultado = await _comparer.CompareAsync();
-
-        return Page();
+            return Page();
+        }
     }
 }
-

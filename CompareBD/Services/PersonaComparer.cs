@@ -15,7 +15,7 @@ namespace PersonCompareDashboard.Services
             _pg = pg;
         }
 
-        public async Task<(int countSql, int countPostgre, List<Persona> missingInPostgre, List<Persona> missingInSql)> CompareAsync()
+        public async Task<CompareResult> CompareAsync()
         {
             var sqlList = await _sql.Personas.ToListAsync();
             var pgList = await _pg.Personas.ToListAsync();
@@ -28,9 +28,33 @@ namespace PersonCompareDashboard.Services
                 .Where(p => !sqlList.Any(s => s.Cedula == p.Cedula))
                 .ToList();
 
-            return (sqlList.Count, pgList.Count, missingInPostgre, missingInSql);
-        }
+            // Tabla paralela
+            var allCedulas = sqlList.Select(s => s.Cedula)
+                .Union(pgList.Select(p => p.Cedula))
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList();
 
+            var comparacionesParalelas = allCedulas.Select(cedula =>
+            {
+                var sql = sqlList.FirstOrDefault(s => s.Cedula == cedula);
+                var pg = pgList.FirstOrDefault(p => p.Cedula == cedula);
+                return new PersonaParalelo
+                {
+                    SqlPersona = sql,
+                    PostgrePersona = pg
+                };
+            }).ToList();
+
+            return new CompareResult
+            {
+                CountSql = sqlList.Count,
+                CountPostgre = pgList.Count,
+                MissingInPostgre = missingInPostgre,
+                MissingInSql = missingInSql,
+                ComparacionesParalelas = comparacionesParalelas
+            };
+        }
 
         public async Task SyncMissingAsync(List<Persona> missingInSql, List<Persona> missingInPostgre)
         {
@@ -47,5 +71,4 @@ namespace PersonCompareDashboard.Services
             }
         }
     }
-
 }

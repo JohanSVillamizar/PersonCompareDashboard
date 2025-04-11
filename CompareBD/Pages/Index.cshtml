@@ -95,15 +95,15 @@
 
     @if (Model.Resultado != null)
     {
-        <p>SQL Server: <strong>@Model.Resultado.Value.CountSql</strong> registros</p>
-        <p>PostgreSQL: <strong>@Model.Resultado.Value.CountPostgre</strong> registros</p>
+        <p>SQL Server: <strong>@Model.Resultado.CountSql</strong> registros</p>
+        <p>PostgreSQL: <strong>@Model.Resultado.CountPostgre</strong> registros</p>
 
-        @if (Model.Resultado.Value.MissingInSql.Any() || Model.Resultado.Value.MissingInPostgre.Any())
+        @if (Model.Resultado.MissingInSql.Any() || Model.Resultado.MissingInPostgre.Any())
         {
             <h4>Faltantes en SQL Server:</h4>
             <table class="comparison-table">
                 <tr><th>Cédula</th><th>Nombre</th><th>Apellido</th><th>Edad</th></tr>
-                @foreach (var p in Model.Resultado.Value.MissingInSql)
+                @foreach (var p in Model.Resultado.MissingInSql)
                 {
                     <tr>
                         <td>@p.Cedula</td>
@@ -117,7 +117,7 @@
             <h4>Faltantes en PostgreSQL:</h4>
             <table class="comparison-table">
                 <tr><th>Cédula</th><th>Nombre</th><th>Apellido</th><th>Edad</th></tr>
-                @foreach (var p in Model.Resultado.Value.MissingInPostgre)
+                @foreach (var p in Model.Resultado.MissingInPostgre)
                 {
                     <tr>
                         <td>@p.Cedula</td>
@@ -135,6 +135,47 @@
         else
         {
             <p class="success-message">No hay diferencias 🎉</p>
+        }
+
+        @* Tabla comparativa lado a lado *@
+        @if (Model.Resultado.ComparacionesParalelas.Any())
+        {
+            <h4>Comparación lado a lado:</h4>
+            <table class="comparison-table">
+                <tr>
+                    <th>BD 1 (SQL Server)</th>
+                    <th>BD 2 (PostgreSQL)</th>
+                </tr>
+                @foreach (var fila in Model.Resultado.ComparacionesParalelas)
+                {
+                    <tr>
+                        <td>
+                            @if (fila.SqlPersona != null)
+                            {
+                                <p><strong>Cédula:</strong> @fila.SqlPersona.Cedula</p>
+                                <p><strong>Nombre:</strong> @fila.SqlPersona.Nombre @fila.SqlPersona.Apellido</p>
+                                <p><strong>Edad:</strong> @fila.SqlPersona.Edad</p>
+                            }
+                            else
+                            {
+                                <p style="color:red;">No existe</p>
+                            }
+                        </td>
+                        <td>
+                            @if (fila.PostgrePersona != null)
+                            {
+                                <p><strong>Cédula:</strong> @fila.PostgrePersona.Cedula</p>
+                                <p><strong>Nombre:</strong> @fila.PostgrePersona.Nombre @fila.PostgrePersona.Apellido</p>
+                                <p><strong>Edad:</strong> @fila.PostgrePersona.Edad</p>
+                            }
+                            else
+                            {
+                                <p style="color:red;">No existe</p>
+                            }
+                        </td>
+                    </tr>
+                }
+            </table>
         }
     }
 </div>
@@ -177,15 +218,15 @@
 
         @if (Model.Resultado != null)
         {
-            var totalRegistros = @Model.Resultado.Value.CountSql + @Model.Resultado.Value.CountPostgre;
-            var sincronizados = totalRegistros - (@Model.Resultado.Value.MissingInSql.Count + @Model.Resultado.Value.MissingInPostgre.Count);
-            var porcentaje = totalRegistros > 0 ? (int)Math.Floor((double)sincronizados / totalRegistros * 100) : 0;
+            var total = @Model.Resultado.CountSql + @Model.Resultado.CountPostgre;
+            var faltantes = @Model.Resultado.MissingInSql.Count + @Model.Resultado.MissingInPostgre.Count;
+            var sincronizados = total - faltantes;
+            var porcentaje = total > 0 ? (int)Math.Floor((double)sincronizados / total * 100) : 0;
 
             <text>
-                updateChart(@porcentaje);
+                        updateChart(@porcentaje);
             </text>
         }
         };
     </script>
 }
-
